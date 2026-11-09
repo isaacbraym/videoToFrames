@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Captura Inteligente</title>
+    <meta name="description" content="Transforma vídeos da tela gravados pelo celular em capturas nítidas e organizadas no Google Drive. Processamento no próprio navegador." />
+    <meta name="theme-color" content="#1b5fd1" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='7' width='26' height='18' rx='3' fill='%231b5fd1'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='white'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%231b5fd1'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="css/app.css" />
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="18" rx="3" /><circle cx="16" cy="16" r="5.5" fill="var(--bg)" /><circle cx="16" cy="16" r="3" /></svg>
+        <span>Captura Inteligente</span>
+      </div>
+      <ol class="steps" id="steps" aria-label="Etapas">
+        <li data-step="video">Vídeo</li>
+        <li data-step="process">Processar</li>
+        <li data-step="review">Revisar</li>
+        <li data-step="upload">Enviar</li>
+        <li data-step="done">Pronto</li>
+      </ol>
+    </header>
+
+    <main>
+      <!-- 1. VÍDEO -->
+      <section id="view-video" class="view">
+        <div id="pending" class="card warn" hidden></div>
+
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="video/*" />
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3l4-2.5v11L16 15v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /></svg>
+          <strong>Escolher vídeo</strong>
+          <small>O vídeo é processado aqui no aparelho e não é enviado a lugar nenhum.</small>
+        </label>
+        <div id="video-info" class="card info" hidden></div>
+
+        <details class="card" id="settings">
+          <summary>Ajustes</summary>
+          <div class="field">
+            <label for="opt-sens">Sensibilidade a mudanças</label>
+            <select id="opt-sens">
+              <option value="baixa">Baixa: só trocas de página</option>
+              <option value="normal" selected>Normal: páginas e mudanças visíveis</option>
+              <option value="alta">Alta: também detalhes pequenos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="opt-enh">Realce da imagem</label>
+            <select id="opt-enh">
+              <option value="nenhum">Nenhum (imagem como veio)</option>
+              <option value="leve" selected>Leve: contraste e nitidez suaves</option>
+              <option value="forte">Forte: também uniformiza a iluminação</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="opt-res">Resolução máxima da imagem</label>
+            <select id="opt-res">
+              <option value="1920">1920 px</option>
+              <option value="2560" selected>2560 px</option>
+              <option value="3840">3840 px (vídeo 4K)</option>
+            </select>
+          </div>
+          <label class="check"><input type="checkbox" id="opt-persp" checked /> Corrigir perspectiva (recortar a tela)</label>
+          <label class="check"><input type="checkbox" id="opt-dedupe" checked /> Remover capturas repetidas</label>
+        </details>
+
+        <details class="card">
+          <summary>Dicas para gravar</summary>
+          <ul class="tips">
+            <li>Enquadre a tela inteira, com um pouco de moldura aparecendo nas bordas.</li>
+            <li>Pare cerca de <b>2 segundos</b> em cada questão ou página. O app escolhe o quadro mais nítido.</li>
+            <li>Ao rolar a página, pare e espere antes de continuar: cada parada vira uma captura.</li>
+            <li>Evite lâmpadas e janelas refletindo na tela. Incline um pouco o celular se houver reflexo.</li>
+            <li>Grave em 1080p ou 4K. Se der, a 60 quadros por segundo (menos borrão).</li>
+            <li>No iPhone, se o vídeo não abrir: Ajustes › Câmera › Formatos › <i>Mais Compatível</i>.</li>
+          </ul>
+        </details>
+
+        <button class="primary block" id="btn-process" disabled>Processar vídeo</button>
+      </section>
+
+      <!-- 2. PROCESSAMENTO -->
+      <section id="view-process" class="view" hidden>
+        <div class="card">
+          <h2>Processando o vídeo</h2>
+          <div class="progress" aria-hidden="true"><div id="prog-bar"></div></div>
+          <p id="prog-text" aria-live="polite">Abrindo o vídeo…</p>
+          <p class="muted" id="prog-eta"></p>
+          <p class="muted small">Mantenha esta tela aberta. Nada sai do aparelho nesta etapa.</p>
+          <button id="btn-cancel">Cancelar</button>
+        </div>
+      </section>
+
+      <!-- 3. REVISÃO -->
+      <section id="view-review" class="view" hidden>
+        <div class="card" id="review-summary"></div>
+        <figure class="card timeline-card">
+          <canvas id="timeline" aria-label="Linha do tempo das capturas"></canvas>
+          <figcaption class="legend">
+            <span><i class="sw sw-change"></i>mudança de conteúdo</span>
+            <span><i class="sw sw-motion"></i>movimento</span>
+            <span><i class="sw sw-keep"></i>captura</span>
+            <span><i class="sw sw-del"></i>removida</span>
+          </figcaption>
+        </figure>
+        <div class="toolbar">
+          <button id="btn-add-toggle">+ Adicionar quadro</button>
+          <button id="btn-rotate-all">Girar todas</button>
+          <button id="btn-zip">Baixar .zip</button>
+          <button id="btn-restart">Outro vídeo</button>
+        </div>
+        <div id="manual" class="card" hidden>
+          <p class="small muted">Ache o momento no vídeo e toque em capturar. Use para algo que o app deixou passar.</p>
+          <video id="player" controls playsinline muted preload="metadata"></video>
+          <button class="primary block" id="btn-capture-now">Capturar este quadro</button>
+        </div>
+        <div id="grid" class="grid"></div>
+        <div class="sticky-actions">
+          <button class="primary block" id="btn-to-upload">Enviar ao Google Drive</button>
+        </div>
+      </section>
+
+      <!-- 4. ENVIO -->
+      <section id="view-upload" class="view" hidden>
+        <div class="card warn" id="cfg-missing" hidden>
+          <h3>Google Drive ainda não configurado</h3>
+          <p>
+            Falta preencher o <code>GOOGLE_CLIENT_ID</code> em <code>js/config.js</code> (passo a passo em
+            <code>docs/CONFIGURAR_GOOGLE.md</code>). Enquanto isso, use <b>Baixar .zip</b> para salvar as capturas.
+          </p>
+          <button id="btn-zip2">Baixar .zip</button>
+        </div>
+        <div class="card" id="drive-panel">
+          <div class="row">
+            <div>
+              <div class="label">Conta Google</div>
+              <div id="acct" class="value">Não conectada</div>
+            </div>
+            <button id="btn-signin">Entrar com Google</button>
+          </div>
+          <div class="row">
+            <div>
+              <div class="label">Pasta de destino</div>
+              <div id="dest-name" class="value">Nenhuma escolhida</div>
+            </div>
+          </div>
+          <div class="dest-actions">
+            <button id="btn-pick">Escolher no Drive</button>
+            <button id="btn-paste">Colar link da pasta</button>
+            <button id="btn-auto">Pasta automática</button>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="opt-ocr" checked />
+            <span>Gerar transcrição de texto (OCR) para o ChatGPT encontrar e ler as capturas</span>
+          </label>
+          <button class="primary block" id="btn-send">Enviar</button>
+          <p class="small muted">Permissão pedida: apenas arquivos criados por este app ou pastas que você escolher (escopo <code>drive.file</code>).</p>
+        </div>
+        <div class="card" id="send-card" hidden>
+          <h3 id="send-title">Enviando…</h3>
+          <div class="progress" aria-hidden="true"><div id="send-bar"></div></div>
+          <p id="send-text" aria-live="polite"></p>
+          <div id="send-error" class="error" hidden></div>
+          <button class="primary" id="btn-retry" hidden>Tentar novamente</button>
+        </div>
+      </section>
+
+      <!-- 5. CONCLUÍDO -->
+      <section id="view-done" class="view" hidden>
+        <div class="card success">
+          <h2>Pronto!</h2>
+          <p id="done-text"></p>
+          <a id="done-link" class="button primary" target="_blank" rel="noopener">Abrir a pasta no Drive</a>
+        </div>
+        <div class="card">
+          <h3>Como pedir ao ChatGPT</h3>
+          <ol class="steps-text">
+            <li>No ChatGPT, conecte o Google Drive (Configurações › Aplicativos) se ainda não fez.</li>
+            <li>Peça: <i>"Abra o arquivo _ULTIMA_SESSAO.txt na minha pasta de capturas, depois o índice da sessão indicada, e responda sobre as questões."</i></li>
+            <li>Para ele <b>ver as imagens</b> (não só o texto), use <b>+ › Adicionar do Google Drive</b> e selecione as capturas da pasta da sessão.</li>
+          </ol>
+          <p class="small muted">Arquivos recém-enviados podem levar alguns minutos para aparecer na busca do ChatGPT.</p>
+        </div>
+        <button class="block" id="btn-new">Processar outro vídeo</button>
+      </section>
+    </main>
+
+    <dialog id="viewer">
+      <div class="viewer-head">
+        <strong id="viewer-title"></strong>
+        <button id="viewer-close" aria-label="Fechar">✕</button>
+      </div>
+      <div class="viewer-stage" id="viewer-stage">
+        <img id="viewer-img" alt="" />
+        <canvas id="corner-canvas" hidden></canvas>
+      </div>
+      <div class="viewer-actions" id="viewer-actions">
+        <button id="v-toggle">Ver original</button>
+        <button id="v-corners">Ajustar cantos</button>
+        <button id="v-rotate">Girar 90°</button>
+        <select id="v-enh" aria-label="Realce">
+          <option value="nenhum">Realce: nenhum</option>
+          <option value="leve">Realce: leve</option>
+          <option value="forte">Realce: forte</option>
+        </select>
+        <button id="v-delete" class="danger">Remover</button>
+      </div>
+      <div class="viewer-actions" id="corner-actions" hidden>
+        <span class="small muted">Arraste os 4 cantos até as bordas da área útil da tela.</span>
+        <button class="primary" id="c-apply">Aplicar</button>
+        <button id="c-auto">Detecção automática</button>
+        <button id="c-none">Sem correção</button>
+        <button id="c-cancel">Cancelar</button>
+      </div>
+    </dialog>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

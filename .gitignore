@@ -1,0 +1,6 @@
+node_modules/
+tests/fixtures/*.mp4
+tests/fixtures/*.json
+*.log
+.DS_Store
+Thumbs.db
